@@ -90,7 +90,7 @@ impl CoffeeMachine {
         ].iter()
         .max()
         .unwrap()
-        .clone()
+        .to_owned()
     }
 
     fn calculate_max_required_water(&self) -> u8 {
@@ -101,7 +101,7 @@ impl CoffeeMachine {
         ].iter()
         .max()
         .unwrap()
-        .clone()
+        .to_owned()
     }
 
     fn is_coffe_deposit_empty(&self) -> bool {
@@ -173,12 +173,8 @@ impl CoffeeMachine {
         println!("State {}.", self.current_state);
     }
 
-    pub fn get_current_state(&self) -> State {
-        self.current_state
-    }
-
-    pub fn actions_from_state(&self, state: State) -> String {
-        match state {
+    pub fn actions_from_current_state(&self) -> String {
+        match self.current_state {
             State::Ready => {
                 let options = vec![
                     BrewAction::ExpressoCoffee.to_string(),
@@ -202,10 +198,10 @@ impl CoffeeMachine {
         }
     }
 
-    pub fn submit_action(&mut self, action: String) {
+    pub fn submit_action(&mut self, action: &str) {
         match self.current_state {
             State::Ready => {
-                let brew_action = BrewAction::from_str(&action).unwrap();
+                let brew_action = BrewAction::from_str(action).unwrap();
                 match brew_action {
                     BrewAction::ExpressoCoffee => self.brew_expresso_coffee(),
                     BrewAction::AmericanCoffee => self.brew_american_coffee(),
@@ -213,7 +209,7 @@ impl CoffeeMachine {
                 }
             },
             State::ActionRequired => {
-                let maintenance_action = MaintenanceAction::from_str(&action).unwrap();
+                let maintenance_action = MaintenanceAction::from_str(action).unwrap();
                 match maintenance_action {
                     MaintenanceAction::FillWater => self.fill_water_deposit(),
                     MaintenanceAction::FillCoffee => self.fill_coffee_deposit(),
