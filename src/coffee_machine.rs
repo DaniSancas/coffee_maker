@@ -4,7 +4,7 @@ use std::str::FromStr;
 use strum_macros::EnumString;
 
 #[derive(Debug, Clone, Copy)]
-pub enum State {
+enum State {
     Ready,
     ActionRequired,
 }
@@ -96,6 +96,13 @@ impl CoffeeMachine {
         new_coffee_machine.print_full_state();
 
         new_coffee_machine
+    }
+
+    pub fn run(&mut self) {
+        loop {
+            let next_action = self.actions_from_current_state();
+            self.submit_action(next_action.as_str());
+        }
     }
 
     fn calculate_max_required_coffee(&self) -> u8 {
@@ -214,7 +221,7 @@ impl CoffeeMachine {
         println!("Current state: {}.", self.current_state);
     }
 
-    pub fn actions_from_current_state(&self) -> String {
+    fn actions_from_current_state(&self) -> String {
         match self.current_state {
             State::Ready => {
                 let options = vec![
@@ -239,7 +246,7 @@ impl CoffeeMachine {
         }
     }
 
-    pub fn submit_action(&mut self, action: &str) {
+    fn submit_action(&mut self, action: &str) {
         match self.current_state {
             State::Ready => {
                 let brew_action = BrewAction::from_str(action).unwrap();
