@@ -1,7 +1,9 @@
 use inquire::Select;
 use std::fmt::Display;
 use std::str::FromStr;
+use strum::IntoEnumIterator;
 use strum_macros::EnumString;
+use strum_macros::EnumIter;
 
 #[derive(Debug, Clone, Copy)]
 enum State {
@@ -15,7 +17,7 @@ impl Display for State {
     }
 }
 
-#[derive(Debug, EnumString)]
+#[derive(Debug, EnumString, EnumIter)]
 enum BrewAction {
     ExpressoCoffee,
     AmericanCoffee,
@@ -34,7 +36,7 @@ struct BrewConsumption {
     water: u8,
 }
 
-#[derive(Debug, EnumString)]
+#[derive(Debug, EnumString, EnumIter)]
 enum MaintenanceAction {
     FillWater,
     FillCoffee,
@@ -65,7 +67,7 @@ pub struct CoffeeMachine {
 
 impl CoffeeMachine {
     pub fn new() -> Self {
-        let new_coffee_machine = CoffeeMachine {
+        let new_coffee_machine = Self {
             coffee_deposit: Deposit {
                 current_load: 0,
                 max_load: 100,
@@ -224,24 +226,22 @@ impl CoffeeMachine {
     fn actions_from_current_state(&self) -> String {
         match self.current_state {
             State::Ready => {
-                let options = vec![
-                    BrewAction::ExpressoCoffee.to_string(),
-                    BrewAction::AmericanCoffee.to_string(),
-                    BrewAction::HotWater.to_string(),
-                ];
-                Select::new("Select your brew option", options)
+                let options = BrewAction::iter()
+                    .map(|a| a.to_string())
+                    .collect();
+
+                Select::new("Select your brew action", options)
                     .prompt()
-                    .unwrap()
+                    .expect("Brew action expected.")
             }
             State::ActionRequired => {
-                let options = vec![
-                    MaintenanceAction::FillWater.to_string(),
-                    MaintenanceAction::FillCoffee.to_string(),
-                    MaintenanceAction::EmptyDump.to_string(),
-                ];
+                let options = MaintenanceAction::iter()
+                .map(|a| a.to_string())
+                .collect();
+
                 Select::new("WARNING: Maintenance action required!", options)
                     .prompt()
-                    .unwrap()
+                    .expect("Maintenance action expected.")
             }
         }
     }
@@ -249,7 +249,7 @@ impl CoffeeMachine {
     fn submit_action(&mut self, action: &str) {
         match self.current_state {
             State::Ready => {
-                let brew_action = BrewAction::from_str(action).unwrap();
+                let brew_action = BrewAction::from_str(action).expect("Brew action expected.");
                 match brew_action {
                     BrewAction::ExpressoCoffee => self.brew_expresso_coffee(),
                     BrewAction::AmericanCoffee => self.brew_american_coffee(),
@@ -257,7 +257,7 @@ impl CoffeeMachine {
                 }
             }
             State::ActionRequired => {
-                let maintenance_action = MaintenanceAction::from_str(action).unwrap();
+                let maintenance_action = MaintenanceAction::from_str(action).expect("Maintenance action expected.");
                 match maintenance_action {
                     MaintenanceAction::FillWater => self.fill_water_deposit(),
                     MaintenanceAction::FillCoffee => self.fill_coffee_deposit(),
