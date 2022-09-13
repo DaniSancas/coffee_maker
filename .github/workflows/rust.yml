@@ -10,7 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  ci:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -18,5 +18,8 @@ jobs:
       run: cargo clippy --color always -- -W clippy::pedantic
     - name: Test
       run: cargo test --verbose
+  cd:
+    runs-on: ubuntu-latest
+    steps:
     - name: Build
       run: cargo build --verbose --release
