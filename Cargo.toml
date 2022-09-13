@@ -16,3 +16,4 @@ strip = true        # Strip symbols from binary
 inquire = "0.3"
 strum = "0.24"
 strum_macros = "0.24"
+eyre = "0.6.8"
