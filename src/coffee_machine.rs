@@ -6,7 +6,7 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 use strum_macros::EnumString;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum State {
     Ready,
     ActionRequired,
@@ -31,7 +31,7 @@ impl Display for BrewAction {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 struct BrewConsumption {
     coffee: u8,
     water: u8,
@@ -50,7 +50,7 @@ impl Display for MaintenanceAction {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 struct Deposit {
     current_load: u8,
     max_load: u8,
@@ -148,7 +148,7 @@ impl CoffeeMachine {
 
     fn is_waste_dump_full(&self) -> bool {
         self.waste_dump.current_load
-            >= self.waste_dump.max_load - self.calculate_max_required_coffee()
+            > self.waste_dump.max_load - self.calculate_max_required_coffee()
     }
 
     fn fill_water_deposit(&mut self) {
@@ -262,5 +262,240 @@ impl CoffeeMachine {
             },
         };
         Ok(())
+    }
+}
+
+// --------- Testing --------- //
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_constructor() {
+        let coffee_maker = CoffeeMachine::new();
+        assert_eq!(coffee_maker.current_state, State::ActionRequired);
+        assert_eq!(
+            coffee_maker.coffee_deposit,
+            Deposit {
+                current_load: 0,
+                max_load: 100,
+            }
+        );
+        assert_eq!(
+            coffee_maker.coffee_deposit,
+            Deposit {
+                current_load: 0,
+                max_load: 100,
+            }
+        );
+        assert_eq!(
+            coffee_maker.coffee_deposit,
+            Deposit {
+                current_load: 0,
+                max_load: 100,
+            }
+        );
+
+        assert_eq!(
+            coffee_maker.water_deposit,
+            Deposit {
+                current_load: 0,
+                max_load: 255,
+            }
+        );
+        assert_eq!(
+            coffee_maker.waste_dump,
+            Deposit {
+                current_load: 0,
+                max_load: 50,
+            }
+        );
+        assert_eq!(
+            coffee_maker.expresso_coffee_consumption,
+            BrewConsumption {
+                coffee: 9,
+                water: 40,
+            }
+        );
+        assert_eq!(
+            coffee_maker.american_coffee_consumption,
+            BrewConsumption {
+                coffee: 7,
+                water: 60,
+            }
+        );
+        assert_eq!(
+            coffee_maker.hot_water_consumption,
+            BrewConsumption {
+                coffee: 0,
+                water: 75,
+            }
+        );
+    }
+
+    #[test]
+    fn test_calculate_max_required_coffee() {
+        let coffee_maker = CoffeeMachine::new();
+
+        assert_eq!(
+            coffee_maker.calculate_max_required_coffee(),
+            coffee_maker.expresso_coffee_consumption.coffee
+        )
+    }
+
+    #[test]
+    fn test_calculate_max_required_water() {
+        let coffee_maker = CoffeeMachine::new();
+
+        assert_eq!(
+            coffee_maker.calculate_max_required_water(),
+            coffee_maker.hot_water_consumption.water
+        )
+    }
+
+    #[test]
+    fn test_is_waste_dump_full() {
+        let mut coffee_maker = CoffeeMachine::new();
+
+        coffee_maker.waste_dump.current_load =
+            coffee_maker.waste_dump.max_load - coffee_maker.calculate_max_required_coffee();
+        assert_eq!(coffee_maker.is_waste_dump_full(), false);
+
+        coffee_maker.waste_dump.current_load += 1;
+        assert_eq!(coffee_maker.is_waste_dump_full(), true);
+    }
+
+    #[test]
+    fn test_is_water_deposit_empty() {
+        let mut coffee_maker = CoffeeMachine::new();
+
+        coffee_maker.water_deposit.current_load = coffee_maker.calculate_max_required_water();
+        assert_eq!(coffee_maker.is_water_deposit_empty(), false);
+
+        coffee_maker.water_deposit.current_load -= 1;
+        assert_eq!(coffee_maker.is_water_deposit_empty(), true);
+    }
+
+    #[test]
+    fn test_is_coffe_deposit_empty() {
+        let mut coffee_maker = CoffeeMachine::new();
+
+        coffee_maker.coffee_deposit.current_load = coffee_maker.calculate_max_required_coffee();
+        assert_eq!(coffee_maker.is_coffe_deposit_empty(), false);
+
+        coffee_maker.coffee_deposit.current_load -= 1;
+        assert_eq!(coffee_maker.is_coffe_deposit_empty(), true);
+    }
+
+    #[test]
+    fn test_check_state() {
+        let mut coffee_maker = CoffeeMachine::new();
+
+        // Brand-new
+        coffee_maker.check_state();
+        assert_eq!(coffee_maker.current_state, State::ActionRequired);
+
+        coffee_maker.fill_coffee_deposit();
+        coffee_maker.fill_water_deposit();
+        assert_eq!(coffee_maker.current_state, State::Ready);
+
+        // Coffee deposit
+        coffee_maker.coffee_deposit.current_load = coffee_maker.calculate_max_required_coffee() - 1;
+        coffee_maker.check_state();
+        assert_eq!(coffee_maker.current_state, State::ActionRequired);
+
+        coffee_maker.fill_coffee_deposit();
+        assert_eq!(coffee_maker.current_state, State::Ready);
+
+        // Water deposit
+        coffee_maker.water_deposit.current_load = coffee_maker.calculate_max_required_water() - 1;
+        coffee_maker.check_state();
+        assert_eq!(coffee_maker.current_state, State::ActionRequired);
+
+        coffee_maker.fill_water_deposit();
+        assert_eq!(coffee_maker.current_state, State::Ready);
+
+        // Waste dump
+        coffee_maker.waste_dump.current_load =
+            coffee_maker.waste_dump.max_load - coffee_maker.calculate_max_required_coffee() + 1;
+        coffee_maker.check_state();
+        assert_eq!(coffee_maker.current_state, State::ActionRequired);
+
+        coffee_maker.empty_waste_dump();
+        assert_eq!(coffee_maker.current_state, State::Ready);
+    }
+
+    #[test]
+    fn test_brew_expresso_coffee() {
+        let mut coffee_maker = CoffeeMachine::new();
+
+        coffee_maker.coffee_deposit.current_load =
+            (coffee_maker.expresso_coffee_consumption.coffee * 2) - 1;
+        coffee_maker.water_deposit.current_load =
+            (coffee_maker.expresso_coffee_consumption.water * 2) - 1;
+        coffee_maker.waste_dump.current_load = coffee_maker.waste_dump.max_load
+            - (coffee_maker.expresso_coffee_consumption.coffee * 2)
+            + 1;
+        coffee_maker.check_state();
+        assert_eq!(coffee_maker.current_state, State::Ready);
+
+        coffee_maker.brew_expresso_coffee();
+        assert_eq!(coffee_maker.current_state, State::ActionRequired);
+
+        coffee_maker.fill_coffee_deposit();
+        assert_eq!(coffee_maker.current_state, State::ActionRequired);
+
+        coffee_maker.fill_water_deposit();
+        assert_eq!(coffee_maker.current_state, State::ActionRequired);
+
+        coffee_maker.empty_waste_dump();
+        assert_eq!(coffee_maker.current_state, State::Ready);
+    }
+
+    #[test]
+    fn test_brew_american_coffee() {
+        let mut coffee_maker = CoffeeMachine::new();
+
+        coffee_maker.coffee_deposit.current_load =
+            (coffee_maker.american_coffee_consumption.coffee * 2) - 1;
+        coffee_maker.water_deposit.current_load =
+            (coffee_maker.american_coffee_consumption.water * 2) - 1;
+        coffee_maker.waste_dump.current_load = coffee_maker.waste_dump.max_load
+            - (coffee_maker.american_coffee_consumption.coffee * 2)
+            + 1;
+        coffee_maker.check_state();
+        assert_eq!(coffee_maker.current_state, State::Ready);
+
+        coffee_maker.brew_american_coffee();
+        assert_eq!(coffee_maker.current_state, State::ActionRequired);
+
+        coffee_maker.fill_coffee_deposit();
+        assert_eq!(coffee_maker.current_state, State::ActionRequired);
+
+        coffee_maker.fill_water_deposit();
+        assert_eq!(coffee_maker.current_state, State::ActionRequired);
+
+        coffee_maker.empty_waste_dump();
+        assert_eq!(coffee_maker.current_state, State::Ready);
+    }
+
+    #[test]
+    fn test_brew_hot_water() {
+        let mut coffee_maker = CoffeeMachine::new();
+
+        coffee_maker.coffee_deposit.current_load = coffee_maker.calculate_max_required_coffee();
+        coffee_maker.water_deposit.current_load =
+            (coffee_maker.hot_water_consumption.water * 2) - 1;
+        coffee_maker.waste_dump.current_load =
+            coffee_maker.waste_dump.max_load - coffee_maker.calculate_max_required_coffee();
+        coffee_maker.check_state();
+        assert_eq!(coffee_maker.current_state, State::Ready);
+
+        coffee_maker.brew_hot_water();
+        assert_eq!(coffee_maker.current_state, State::ActionRequired);
+
+        coffee_maker.fill_water_deposit();
+        assert_eq!(coffee_maker.current_state, State::Ready);
     }
 }
