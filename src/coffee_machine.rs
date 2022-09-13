@@ -1,10 +1,10 @@
+use eyre::Result;
 use inquire::Select;
 use std::fmt::Display;
 use std::str::FromStr;
 use strum::IntoEnumIterator;
-use strum_macros::EnumString;
 use strum_macros::EnumIter;
-use eyre::Result;
+use strum_macros::EnumString;
 
 #[derive(Debug, Clone, Copy)]
 enum State {
@@ -109,7 +109,7 @@ impl CoffeeMachine {
                     println!("{}", e);
                     println!("Exiting application...");
                     break;
-                },
+                }
             }
         }
     }
@@ -233,20 +233,14 @@ impl CoffeeMachine {
     fn actions_from_current_state(&self) -> Result<String> {
         let action = match self.current_state {
             State::Ready => {
-                let options = BrewAction::iter()
-                    .map(|a| a.to_string())
-                    .collect();
+                let options = BrewAction::iter().map(|a| a.to_string()).collect();
 
-                Select::new("Select your brew action", options)
-                    .prompt()?
+                Select::new("Select your brew action", options).prompt()?
             }
             State::ActionRequired => {
-                let options = MaintenanceAction::iter()
-                .map(|a| a.to_string())
-                .collect();
+                let options = MaintenanceAction::iter().map(|a| a.to_string()).collect();
 
-                Select::new("WARNING: Maintenance action required!", options)
-                    .prompt()?
+                Select::new("WARNING: Maintenance action required!", options).prompt()?
             }
         };
         Ok(action)
@@ -256,20 +250,16 @@ impl CoffeeMachine {
         let action = self.actions_from_current_state()?;
 
         match self.current_state {
-            State::Ready => {
-                match BrewAction::from_str(&action)? {
-                    BrewAction::ExpressoCoffee => self.brew_expresso_coffee(),
-                    BrewAction::AmericanCoffee => self.brew_american_coffee(),
-                    BrewAction::HotWater => self.brew_hot_water(),
-                }
-            }
-            State::ActionRequired => {
-                match MaintenanceAction::from_str(&action)? {
-                    MaintenanceAction::FillWater => self.fill_water_deposit(),
-                    MaintenanceAction::FillCoffee => self.fill_coffee_deposit(),
-                    MaintenanceAction::EmptyDump=> self.empty_waste_dump(),
-                }
-            }
+            State::Ready => match BrewAction::from_str(&action)? {
+                BrewAction::ExpressoCoffee => self.brew_expresso_coffee(),
+                BrewAction::AmericanCoffee => self.brew_american_coffee(),
+                BrewAction::HotWater => self.brew_hot_water(),
+            },
+            State::ActionRequired => match MaintenanceAction::from_str(&action)? {
+                MaintenanceAction::FillWater => self.fill_water_deposit(),
+                MaintenanceAction::FillCoffee => self.fill_coffee_deposit(),
+                MaintenanceAction::EmptyDump => self.empty_waste_dump(),
+            },
         };
         Ok(())
     }
